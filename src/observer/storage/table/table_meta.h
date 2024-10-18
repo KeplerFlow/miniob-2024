@@ -64,6 +64,8 @@ public:
 
   int record_size() const;
 
+  RC drop_index(const char *index_name);
+
 public:
   int  serialize(std::ostream &os) const override;
   int  deserialize(std::istream &is) override;

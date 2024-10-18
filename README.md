@@ -101,3 +101,30 @@ MiniOB 采用 [木兰宽松许可证，第2版](https://license.coscl.org.cn/Mul
 - [OceanBase 大赛官方交流群 35326455](https://qr.dingtalk.com/action/joingroup?code=v1,k1,g61jI0RwHQA8UMocuTbys2cyM7vck2c6jNE87vdxz9o=&_dt_no_comment=1&origin=11)
 - [OceanBase 官方论坛](https://ask.oceanbase.com/)
 - MiniOB 开发者微信群(添加 hnwyllmm_126 为好友，备注 MiniOB，邀请入群)
+  
+  
+
+export LD_LIBRARY_PATH=""
+
+sudo bash build.sh
+
+cd build
+
+./bin/observer -f ../etc/observer.ini -s miniob.sock
+
+./bin/obclient -s miniob.sock
+
+token for ob: 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
+
+token for push: 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
+
+git clone https://KeplerFlow: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@github.com/KeplerFlow/miniob-2024
+
+git remote set-url origin https://KeplerFlow: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@github.com/KeplerFlow/miniob-2024.git
+
+sudo rm -rf .git 
+git init 
+git add . 
+git commit -m 'init' 
+git remote add origin https://github.com/KeplerFlow/miniob-2024.git 
+git branch -M main
