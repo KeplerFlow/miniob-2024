@@ -110,9 +110,9 @@ sudo bash build.sh
 
 cd build
 
-./bin/observer -f ../etc/observer.ini -s miniob.sock
+sudo ./bin/observer -f ../etc/observer.ini -s miniob.sock
 
-./bin/obclient -s miniob.sock
+sudo ./bin/obclient -s miniob.sock
 
 token for ob: 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
 
@@ -128,3 +128,4 @@ git add .
 git commit -m 'init' 
 git remote add origin https://github.com/KeplerFlow/miniob-2024.git 
 git branch -M main
+git push -u origin 2024-competition
