@@ -1,14 +1,14 @@
-/* A Bison parser, made by GNU Bison 2.3.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
-/* Skeleton interface for Bison's Yacc-like parsers in C
+/* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002, 2003, 2004, 2005, 2006
-   Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
+   Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,9 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor,
-   Boston, MA 02110-1301, USA.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -33,131 +31,93 @@
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
-/* Tokens.  */
+/* DO NOT RELY ON FEATURES THAT ARE NOT DOCUMENTED in the manual,
+   especially those whose name start with YY_ or yy_.  They are
+   private implementation details that can be changed or removed.  */
+
+#ifndef YY_YY_YACC_SQL_HPP_INCLUDED
+# define YY_YY_YACC_SQL_HPP_INCLUDED
+/* Debug traces.  */
+#ifndef YYDEBUG
+# define YYDEBUG 0
+#endif
+#if YYDEBUG
+extern int yydebug;
+#endif
+
+/* Token kinds.  */
 #ifndef YYTOKENTYPE
 # define YYTOKENTYPE
-   /* Put the tokens into the symbol table, so that GDB and other debuggers
-      know about them.  */
-   enum yytokentype {
-     SEMICOLON = 258,
-     BY = 259,
-     CREATE = 260,
-     DROP = 261,
-     GROUP = 262,
-     TABLE = 263,
-     TABLES = 264,
-     INDEX = 265,
-     CALC = 266,
-     SELECT = 267,
-     DESC = 268,
-     SHOW = 269,
-     SYNC = 270,
-     INSERT = 271,
-     DELETE = 272,
-     UPDATE = 273,
-     LBRACE = 274,
-     RBRACE = 275,
-     COMMA = 276,
-     TRX_BEGIN = 277,
-     TRX_COMMIT = 278,
-     TRX_ROLLBACK = 279,
-     INT_T = 280,
-     STRING_T = 281,
-     FLOAT_T = 282,
-     DATE_T = 283,
-     VECTOR_T = 284,
-     HELP = 285,
-     EXIT = 286,
-     DOT = 287,
-     INTO = 288,
-     VALUES = 289,
-     FROM = 290,
-     WHERE = 291,
-     AND = 292,
-     SET = 293,
-     ON = 294,
-     LOAD = 295,
-     DATA = 296,
-     INFILE = 297,
-     EXPLAIN = 298,
-     STORAGE = 299,
-     FORMAT = 300,
-     EQ = 301,
-     LT = 302,
-     GT = 303,
-     LE = 304,
-     GE = 305,
-     NE = 306,
-     NUMBER = 307,
-     FLOAT = 308,
-     ID = 309,
-     SSS = 310,
-     UMINUS = 311
-   };
+  enum yytokentype
+  {
+    YYEMPTY = -2,
+    YYEOF = 0,                     /* "end of file"  */
+    YYerror = 256,                 /* error  */
+    YYUNDEF = 257,                 /* "invalid token"  */
+    SEMICOLON = 258,               /* SEMICOLON  */
+    BY = 259,                      /* BY  */
+    CREATE = 260,                  /* CREATE  */
+    DROP = 261,                    /* DROP  */
+    GROUP = 262,                   /* GROUP  */
+    TABLE = 263,                   /* TABLE  */
+    TABLES = 264,                  /* TABLES  */
+    INDEX = 265,                   /* INDEX  */
+    CALC = 266,                    /* CALC  */
+    SELECT = 267,                  /* SELECT  */
+    DESC = 268,                    /* DESC  */
+    SHOW = 269,                    /* SHOW  */
+    SYNC = 270,                    /* SYNC  */
+    INSERT = 271,                  /* INSERT  */
+    DELETE = 272,                  /* DELETE  */
+    UPDATE = 273,                  /* UPDATE  */
+    LBRACE = 274,                  /* LBRACE  */
+    RBRACE = 275,                  /* RBRACE  */
+    COMMA = 276,                   /* COMMA  */
+    TRX_BEGIN = 277,               /* TRX_BEGIN  */
+    TRX_COMMIT = 278,              /* TRX_COMMIT  */
+    TRX_ROLLBACK = 279,            /* TRX_ROLLBACK  */
+    INT_T = 280,                   /* INT_T  */
+    STRING_T = 281,                /* STRING_T  */
+    FLOAT_T = 282,                 /* FLOAT_T  */
+    DATE_T = 283,                  /* DATE_T  */
+    VECTOR_T = 284,                /* VECTOR_T  */
+    HELP = 285,                    /* HELP  */
+    EXIT = 286,                    /* EXIT  */
+    DOT = 287,                     /* DOT  */
+    INTO = 288,                    /* INTO  */
+    VALUES = 289,                  /* VALUES  */
+    FROM = 290,                    /* FROM  */
+    WHERE = 291,                   /* WHERE  */
+    AND = 292,                     /* AND  */
+    SET = 293,                     /* SET  */
+    ON = 294,                      /* ON  */
+    LOAD = 295,                    /* LOAD  */
+    DATA = 296,                    /* DATA  */
+    INFILE = 297,                  /* INFILE  */
+    EXPLAIN = 298,                 /* EXPLAIN  */
+    STORAGE = 299,                 /* STORAGE  */
+    FORMAT = 300,                  /* FORMAT  */
+    EQ = 301,                      /* EQ  */
+    LT = 302,                      /* LT  */
+    GT = 303,                      /* GT  */
+    LE = 304,                      /* LE  */
+    GE = 305,                      /* GE  */
+    NE = 306,                      /* NE  */
+    NUMBER = 307,                  /* NUMBER  */
+    FLOAT = 308,                   /* FLOAT  */
+    ID = 309,                      /* ID  */
+    SSS = 310,                     /* SSS  */
+    UMINUS = 311                   /* UMINUS  */
+  };
+  typedef enum yytokentype yytoken_kind_t;
 #endif
-/* Tokens.  */
-#define SEMICOLON 258
-#define BY 259
-#define CREATE 260
-#define DROP 261
-#define GROUP 262
-#define TABLE 263
-#define TABLES 264
-#define INDEX 265
-#define CALC 266
-#define SELECT 267
-#define DESC 268
-#define SHOW 269
-#define SYNC 270
-#define INSERT 271
-#define DELETE 272
-#define UPDATE 273
-#define LBRACE 274
-#define RBRACE 275
-#define COMMA 276
-#define TRX_BEGIN 277
-#define TRX_COMMIT 278
-#define TRX_ROLLBACK 279
-#define INT_T 280
-#define STRING_T 281
-#define FLOAT_T 282
-#define DATE_T 283
-#define VECTOR_T 284
-#define HELP 285
-#define EXIT 286
-#define DOT 287
-#define INTO 288
-#define VALUES 289
-#define FROM 290
-#define WHERE 291
-#define AND 292
-#define SET 293
-#define ON 294
-#define LOAD 295
-#define DATA 296
-#define INFILE 297
-#define EXPLAIN 298
-#define STORAGE 299
-#define FORMAT 300
-#define EQ 301
-#define LT 302
-#define GT 303
-#define LE 304
-#define GE 305
-#define NE 306
-#define NUMBER 307
-#define FLOAT 308
-#define ID 309
-#define SSS 310
-#define UMINUS 311
 
-
-
-
+/* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef union YYSTYPE
-#line 118 "yacc_sql.y"
+union YYSTYPE
 {
+#line 118 "yacc_sql.y"
+
   ParsedSqlNode *                            sql_node;
   ConditionSqlNode *                         condition;
   Value *                                    value;
@@ -174,28 +134,33 @@ typedef union YYSTYPE
   char *                                     string;
   int                                        number;
   float                                      floats;
-}
-/* Line 1529 of yacc.c.  */
-#line 180 "yacc_sql.hpp"
-	YYSTYPE;
-# define yystype YYSTYPE /* obsolescent; will be withdrawn */
-# define YYSTYPE_IS_DECLARED 1
+
+#line 139 "yacc_sql.hpp"
+
+};
+typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
+# define YYSTYPE_IS_DECLARED 1
 #endif
 
-extern YYSTYPE yylval;
-
+/* Location type.  */
 #if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
-typedef struct YYLTYPE
+typedef struct YYLTYPE YYLTYPE;
+struct YYLTYPE
 {
   int first_line;
   int first_column;
   int last_line;
   int last_column;
-} YYLTYPE;
-# define yyltype YYLTYPE /* obsolescent; will be withdrawn */
+};
 # define YYLTYPE_IS_DECLARED 1
 # define YYLTYPE_IS_TRIVIAL 1
 #endif
 
-extern YYLTYPE yylloc;
+
+
+
+int yyparse (const char * sql_string, ParsedSqlResult * sql_result, void * scanner);
+
+
+#endif /* !YY_YY_YACC_SQL_HPP_INCLUDED  */

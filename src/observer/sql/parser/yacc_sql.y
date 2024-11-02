@@ -53,8 +53,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 
 %}
 
-/* %define api.pure full */
-/* %define parse.error verbose */
+ %define api.pure full 
+ %define parse.error verbose 
 /** 启用位置标识 **/
 %locations
 %lex-param { yyscan_t scanner }
