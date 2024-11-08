@@ -554,7 +554,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
               return RC::SCHEMA_FIELD_MISSING;
             }
 
-            query_fields.push_back(Field(table, field_meta));
+            //query_fields.push_back(Field(table, field_meta));
           }
         }
 
@@ -599,8 +599,6 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
                   LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
                   return RC::SCHEMA_FIELD_MISSING;
                 }
-
-                group_fields.push_back(Field(table, field_meta));
               }
             }
           } else {
