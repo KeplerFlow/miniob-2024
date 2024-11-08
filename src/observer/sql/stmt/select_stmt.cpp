@@ -153,7 +153,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
   std::unordered_map<std::string, std::string> alias_map(select_sql.alias_map);
   for (auto it = alias_map.begin(); it != alias_map.end(); it++) {
     if (table_map.find(it->second) != table_map.end()) {
-      table_map.insert(std::pair<std::string, Table *>(it->first, table_map[it->second]));
+      //table_map.insert(std::pair<std::string, Table *>(it->first, table_map[it->second]));
       if(it->second==select_sql.relations[0]){
         default_table_alas=it->first;
       }
@@ -189,7 +189,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
             0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {
           FieldMeta *field_meta=new FieldMeta;
           field_meta->init("*");
-          query_fields.push_back(Field(default_table, field_meta));
+          //query_fields.push_back(Field(default_table, field_meta));
           for(auto stringSql:select_sql.stringsqlExprs){
             if(stringSql->name().compare(relation_attr.sqlString)==0){
               stringSql->setType(INTS);
@@ -438,9 +438,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
             return RC::SCHEMA_FIELD_MISSING;
           }
 
-          order_by_fields.push_back(Field(table, field_meta));
         }
-        order_by_sequences.push_back(order_by_sequence);
       }
 
       // create filter statement in `where` statement
