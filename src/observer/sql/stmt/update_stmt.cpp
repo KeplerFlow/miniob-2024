@@ -68,17 +68,17 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
       select_map[i]=reinterpret_cast<SelectStmt*>(selectStmt);
 
     }else{
-      const AttrType value_type = updates[i].value.attr_type();
+      const AttrType value_type = AttrType::TEXTS;
       auto value=updates[i].value;
       if (field_type != value_type) {
         if(field_type==CHARS){
           if(value_type==INTS){
             auto s= common::int2string(value.get_int());
-            value.set_type(CHARS);
+            value.set_type(TEXTS);
             value.set_string(s.c_str());
           }else if(value_type==FLOATS){
             auto s= common::float2string(value.get_float());
-            value.set_type(CHARS);
+            value.set_type(TEXTS);
             value.set_string(s.c_str());
           }else if(value_type==NULLS){
             if(!field_meta->is_null()){
@@ -93,16 +93,11 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
 
           }
         }else if(field_type==INTS){
-          if(value_type==CHARS){
+          if(value_type==INTS){
             auto d= common::string2float(value.get_string());
             auto integer= common::float2int(d);
             value.set_type(INTS);
             value.set_int(integer);
-          }else if(value_type==FLOATS){
-            auto integer= common::float2int(value.get_float());
-            value.set_type(INTS);
-            value.set_int(integer);
-
           }else if(value_type==NULLS){
             if(!field_meta->is_null()){
               LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
