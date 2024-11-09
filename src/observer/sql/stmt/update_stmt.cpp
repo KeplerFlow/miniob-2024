@@ -45,7 +45,7 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
   // check fields type（目前只支持单个字段）
   //Value value = update.value;
   const TableMeta &table_meta = table->table_meta();
-  const int value_num = update.updateValue_list.size();
+  const int value_num = 1;
   std::vector<const FieldMeta *>field_list;
   const FieldMeta *field_meta;
   for (int i=0; i<value_num; ++i) {

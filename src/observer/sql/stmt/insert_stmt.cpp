@@ -137,8 +137,8 @@ RC InsertStmt::create(Db *db,  InsertSqlNode &inserts, Stmt *&stmt)
           }
           char *text=(char *)malloc(values[i].length()+1);
           memcpy(text,values[i].get_string().c_str(),values[i].length());
-          text[values[i].length()]='\0';
-          values[i].set_text(text);
+          //text[values[i].length()]='\0';
+          //values[i].set_text(text);
         }
       }else{
         LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
