@@ -422,7 +422,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
                 return RC::SCHEMA_FIELD_MISSING;
               }
 
-              order_by_fields.push_back(Field(table, field_meta));
+              //order_by_fields.push_back(Field(table, field_meta));
             }
           }
         } else {
@@ -1032,7 +1032,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
                 return RC::SCHEMA_FIELD_MISSING;
               }
 
-              order_by_fields.push_back(Field(table, field_meta));
+              //order_by_fields.push_back(Field(table, field_meta));
             }
           }
         } else {
@@ -1048,9 +1048,9 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
             return RC::SCHEMA_FIELD_MISSING;
           }
 
-          order_by_fields.push_back(Field(table, field_meta));
+          //order_by_fields.push_back(Field(table, field_meta));
         }
-        order_by_sequences.push_back(order_by_sequence);
+        //order_by_sequences.push_back(order_by_sequence);
       }
 
       // create filter statement in `where` statement
