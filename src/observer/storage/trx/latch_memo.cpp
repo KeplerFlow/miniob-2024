@@ -109,7 +109,7 @@ bool LatchMemo::try_slatch(Frame *frame)
 void LatchMemo::xlatch(common::SharedMutex *lock)
 {
   lock->lock();
-  items_.emplace_back(LatchMemoType::EXCLUSIVE, lock);
+  //items_.emplace_back(LatchMemoType::EXCLUSIVE, lock);
   LOG_DEBUG("lock root success");
 }
 

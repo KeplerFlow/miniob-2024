@@ -256,7 +256,6 @@ RC MvccTrx::commit()
 
 RC MvccTrx::commit_with_trx_id(int32_t commit_xid)
 {
-  // TODO 这里存在一个很大的问题，不能让其他事务一次性看到当前事务更新到的数据或同时看不到
   RC rc = RC::SUCCESS;
   started_ = false;
   
@@ -288,7 +287,7 @@ RC MvccTrx::commit_with_trx_id(int32_t commit_xid)
         RID rid(operation.page_num(), operation.slot_num());
         
         Field begin_xid_field, end_xid_field;
-        trx_fields(table, begin_xid_field, end_xid_field);
+        //trx_fields(table, begin_xid_field, end_xid_field);
 
         auto record_updater = [this, &end_xid_field, commit_xid](Record &record) {
           (void)this;
@@ -330,10 +329,6 @@ RC MvccTrx::rollback()
         RID rid(operation.page_num(), operation.slot_num());
         Record record;
         Table *table = operation.table();
-        // TODO 这里虽然调用get_record好像多次一举，而且看起来放在table的实现中更好，
-        // 而且实际上trx应该记录下来自己曾经插入过的数据
-        // 也就是不需要从table中获取这条数据，可以直接从当前内存中获取
-        // 这里也可以不删除，仅仅给数据加个标识位，等垃圾回收器来收割也行
         rc = table->get_record(rid, record); 
         ASSERT(rc == RC::SUCCESS, "failed to get record while rollback. rid=%s, rc=%s", 
                rid.to_string().c_str(), strrc(rc));
@@ -441,7 +436,7 @@ RC MvccTrx::redo(Db *db, const CLogRecord &log_record)
       ASSERT(rc == RC::SUCCESS, "failed to get record while committing. rid=%s, rc=%s",
              data_record.rid_.to_string().c_str(), strrc(rc));
       
-      operations_.push_back(Operation(Operation::Type::DELETE, table, data_record.rid_));
+      //operations_.push_back(Operation(Operation::Type::DELETE, table, data_record.rid_));
     } break;
 
   }
