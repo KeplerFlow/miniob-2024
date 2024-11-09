@@ -56,7 +56,7 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
       return RC::SCHEMA_FIELD_NOT_EXIST;
     }
     const AttrType field_type = field_meta->type();
-    if(updates[i].is_select){
+    if(false){
       Stmt * selectStmt= nullptr;
       RC rc = SelectStmt::create(db,
           updates[i].selectSqlNode,
@@ -65,7 +65,7 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
         LOG_WARN("cannot construct select stmt");
         return rc;
       }
-      select_map[i]=reinterpret_cast<SelectStmt*>(selectStmt);
+      //select_map[i]=reinterpret_cast<SelectStmt*>(selectStmt);
 
     }else{
       const AttrType value_type = updates[i].value.attr_type();

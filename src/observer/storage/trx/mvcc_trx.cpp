@@ -444,19 +444,6 @@ RC MvccTrx::redo(Db *db, const CLogRecord &log_record)
       operations_.push_back(Operation(Operation::Type::DELETE, table, data_record.rid_));
     } break;
 
-    case CLogType::MTR_COMMIT: {
-      const CLogRecordCommitData &commit_record = log_record.commit_record();
-      commit_with_trx_id(commit_record.commit_xid_);
-    } break;
-
-    case CLogType::MTR_ROLLBACK: {
-      rollback();
-    } break;
-    
-    default: {
-      ASSERT(false, "unsupported redo log. log_record=%s", log_record.to_string().c_str());
-      return RC::INTERNAL;
-    } break;
   }
 
   return RC::SUCCESS;

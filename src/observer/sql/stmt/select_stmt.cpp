@@ -614,7 +614,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
               return RC::SCHEMA_FIELD_MISSING;
             }
 
-            group_fields.push_back(Field(table, field_meta));
+            //group_fields.push_back(Field(table, field_meta));
           }
         }
 
