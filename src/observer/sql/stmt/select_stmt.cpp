@@ -79,58 +79,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
 
   bool is_agg=false;
   int agg_num=0,group_by_num=0;
-  if(select_sql.is_group_by){
-    for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--){
-      const RelAttrSqlNode &relation_attr = select_sql.attributes[i];
-      if(relation_attr.agg!=NO_AGG){
-        is_agg= true;
-        agg_num++;
-        if(relation_attr.attribute_name=="*"&&relation_attr.agg!=COUNT_AGG){
-          LOG_WARN("invalid argument. agg_num  wrong. ");
-          return RC::INVALID_ARGUMENT;
-        }
-      }else{
-        bool is_found=false;
-        for(int j=0;j<select_sql.group_by.attrs.size();j++){
-          const RelAttrSqlNode &group_by_relation_attr = select_sql.group_by.attrs[j];
-          if(common::is_blank(relation_attr.relation_name.c_str())){
-            if(common::is_blank(group_by_relation_attr.relation_name.c_str())||group_by_relation_attr.relation_name==tables[0]->table_meta().name()){
-              if(relation_attr.attribute_name.compare(group_by_relation_attr.attribute_name)==0){
-                group_by_num++;
-                is_found=true;
-                break;
-              }
-            }
-          }else{
-            if(common::is_blank(group_by_relation_attr.relation_name.c_str())){
-              if(relation_attr.relation_name==tables[0]->table_meta().name()){
-                if(relation_attr.attribute_name.compare(group_by_relation_attr.attribute_name)==0){
-                  group_by_num++;
-                  is_found=true;
-                  break;
-                }
-              }
-            }else{
-              if(relation_attr.relation_name==group_by_relation_attr.relation_name){
-                if(relation_attr.attribute_name.compare(group_by_relation_attr.attribute_name)==0){
-                  group_by_num++;
-                  is_found=true;
-                  break;
-                }
-              }
-            }
-          }
-
-        }
-        if(!is_found){
-          return RC::INVALID_ARGUMENT;
-        }
-      }
-      if(!relation_attr.is_right){
-        return  RC::INVALID_ARGUMENT;
-      }
-    }
-  }else{
+  {
     for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--){
       const RelAttrSqlNode &relation_attr = select_sql.attributes[i];
       if(relation_attr.agg!=NO_AGG){

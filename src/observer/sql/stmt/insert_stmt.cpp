@@ -87,12 +87,6 @@ RC InsertStmt::create(Db *db,  InsertSqlNode &inserts, Stmt *&stmt)
           values[i].set_type(INTS);
           values[i].set_int(integer);
 
-        }else if(value_type==NULLS){
-          if(!field_meta->is_null()){
-            LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-              table_name, field_meta->name(), field_type, value_type);
-            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-          }
         }else{
           LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
               table_name, field_meta->name(), field_type, value_type);
@@ -129,16 +123,6 @@ RC InsertStmt::create(Db *db,  InsertSqlNode &inserts, Stmt *&stmt)
           LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
               table_name, field_meta->name(), field_type, value_type);
           return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-        }
-      }else if(field_type==TEXTS){
-        if(value_type==CHARS){
-          if(values[i].length()>65535){
-            return RC::INVALID_ARGUMENT;
-          }
-          char *text=(char *)malloc(values[i].length()+1);
-          memcpy(text,values[i].get_string().c_str(),values[i].length());
-          //text[values[i].length()]='\0';
-          //values[i].set_text(text);
         }
       }else{
         LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
