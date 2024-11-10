@@ -146,16 +146,16 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
               table_name, field_meta->name(), field_type, value_type);
             return RC::SCHEMA_FIELD_TYPE_MISMATCH;
           }
-        }else if(field_type==TEXTS){
-          if(value_type==CHARS){
-            if(value.length()>65535){
-              return RC::INVALID_ARGUMENT;
-            }
-            char *text=(char *)malloc(value.length()+1);
-            memcpy(text,value.get_string().c_str(),value.length());
-            //text[value.length()]='\0';
-            //value.set_text(text);
-          }
+        // }else if(field_type==TEXTS){
+        //   if(value_type==CHARS){
+        //     if(value.length()>65535){
+        //       return RC::INVALID_ARGUMENT;
+        //     }
+        //     char *text=(char *)malloc(value.length()+1);
+        //     memcpy(text,value.get_string().c_str(),value.length());
+        //     //text[value.length()]='\0';
+        //     //value.set_text(text);
+        //   }
         }else{
           LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
             table_name, field_meta->name(), field_type, value_type);
