@@ -153,8 +153,8 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
             }
             char *text=(char *)malloc(value.length()+1);
             memcpy(text,value.get_string().c_str(),value.length());
-            text[value.length()]='\0';
-            value.set_text(text);
+            //text[value.length()]='\0';
+            //value.set_text(text);
           }
         }else{
           LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
