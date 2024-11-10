@@ -131,103 +131,113 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
 
       // collect query fields in `select` statement
       std::vector<Field> query_fields;
-      for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--) {
-        const RelAttrSqlNode &relation_attr = select_sql.attributes[i];
+      for (int index = 0; index < static_cast<int>(select_sql.attributes.size()); ++index) {
+        const RelAttrSqlNode &attr_node = select_sql.attributes[index];
 
-        if (common::is_blank(relation_attr.relation_name.c_str()) &&
-            0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {
-          FieldMeta *field_meta=new FieldMeta;
-          field_meta->init("*");
-          query_fields.push_back(Field(default_table, field_meta));
-          for(auto stringSql:select_sql.stringsqlExprs){
-            if(stringSql->name().compare(relation_attr.sqlString)==0){
-              stringSql->setType(INTS);
+        const char *rel_name = attr_node.relation_name.c_str();
+        const char *attr_name = attr_node.attribute_name.c_str();
+
+        if (common::is_blank(rel_name) && strcmp(attr_name, "*") == 0) {
+          // Case: SELECT * without specifying a table
+          FieldMeta *meta_field = new FieldMeta;
+          meta_field->init("*");
+          query_fields.push_back(Field(default_table, meta_field));
+
+          for (auto sql_expr : select_sql.stringsqlExprs) {
+            if (sql_expr->name().compare(attr_node.sqlString) == 0) {
+              sql_expr->setType(INTS);
             }
           }
-
-        } else if (!common::is_blank(relation_attr.relation_name.c_str())) {
-          const char *table_name = relation_attr.relation_name.c_str();
-          const char *field_name = relation_attr.attribute_name.c_str();
-
-          if (0 == strcmp(table_name, "*")) {
-            if (0 != strcmp(field_name, "*")) {
-              LOG_WARN("invalid field name while table is *. attr=%s", field_name);
+        } else if (!common::is_blank(rel_name)) {
+          // Relation name is specified
+          if (strcmp(rel_name, "*") == 0) {
+            // Invalid case: relation name is '*' with non-'*' attribute
+            if (strcmp(attr_name, "*") != 0) {
+              LOG_WARN("Invalid field name when table is '*'. Attribute: %s", attr_name);
               return RC::SCHEMA_FIELD_MISSING;
             }
-            FieldMeta *field_meta=new FieldMeta;
-            field_meta->init("*");
-            query_fields.push_back(Field(default_table, field_meta));
-            for(auto stringSql:select_sql.stringsqlExprs){
-              if(stringSql->name().compare(relation_attr.sqlString)==0){
-                stringSql->setType(INTS);
+            // Case: SELECT * FROM *
+            FieldMeta *meta_field = new FieldMeta;
+            meta_field->init("*");
+            query_fields.push_back(Field(default_table, meta_field));
+
+            for (auto sql_expr : select_sql.stringsqlExprs) {
+              if (sql_expr->name().compare(attr_node.sqlString) == 0) {
+                sql_expr->setType(INTS);
               }
             }
           } else {
-            auto iter = table_map.find(table_name);
-            if (iter == table_map.end()) {
-              LOG_WARN("no such table in from list: %s", table_name);
+            // Valid table name specified
+            auto tbl_iter = table_map.find(rel_name);
+            if (tbl_iter == table_map.end()) {
+              LOG_WARN("No such table in FROM clause: %s", rel_name);
               return RC::SCHEMA_FIELD_MISSING;
             }
 
-            Table *table = iter->second;
-            if (0 == strcmp(field_name, "*")) {
-              FieldMeta *field_meta=new FieldMeta;
-              field_meta->init("*");
-              query_fields.push_back(Field(table, field_meta));
-              for(auto stringSql:select_sql.stringsqlExprs){
-                if(stringSql->name().compare(relation_attr.sqlString)==0){
-                  stringSql->setType(INTS);
+            Table *tbl = tbl_iter->second;
+            if (strcmp(attr_name, "*") == 0) {
+              // Case: SELECT * FROM table
+              FieldMeta *meta_field = new FieldMeta;
+              meta_field->init("*");
+              query_fields.push_back(Field(tbl, meta_field));
+
+              for (auto sql_expr : select_sql.stringsqlExprs) {
+                if (sql_expr->name().compare(attr_node.sqlString) == 0) {
+                  sql_expr->setType(INTS);
                 }
               }
             } else {
-              const FieldMeta *field_meta = table->table_meta().field(field_name);
-              if (nullptr == field_meta) {
-                LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
+              // Specific attribute from a specific table
+              const FieldMeta *meta_field = tbl->table_meta().field(attr_name);
+              if (meta_field == nullptr) {
+                LOG_WARN("No such field: %s.%s.%s", db->name(), tbl->name(), attr_name);
                 return RC::SCHEMA_FIELD_MISSING;
               }
 
-              query_fields.push_back(Field(table, field_meta));
-              for(auto stringSql:select_sql.stringsqlExprs){
-                if(stringSql->name().compare(relation_attr.sqlString)==0){
-                  if(relation_attr.agg==MAX_AGG||relation_attr.agg==MIN_AGG||relation_attr.agg==SUM_AGG){
-                    stringSql->setType(field_meta->type());
-                  }else if(relation_attr.agg==COUNT_AGG){
-                    stringSql->setType(INTS);
-                  }else{
-                    stringSql->setType(FLOATS);
+              query_fields.push_back(Field(tbl, meta_field));
+
+              for (auto sql_expr : select_sql.stringsqlExprs) {
+                if (sql_expr->name().compare(attr_node.sqlString) == 0) {
+                  if (attr_node.agg == MAX_AGG || attr_node.agg == MIN_AGG || attr_node.agg == SUM_AGG) {
+                    sql_expr->setType(meta_field->type());
+                  } else if (attr_node.agg == COUNT_AGG) {
+                    sql_expr->setType(INTS);
+                  } else {
+                    sql_expr->setType(FLOATS);
                   }
                 }
               }
             }
           }
         } else {
+          // Relation name is blank, attribute name is specified
           if (tables.size() != 1) {
-            LOG_WARN("invalid. I do not know the attr's table. attr=%s", relation_attr.attribute_name.c_str());
+            LOG_WARN("Ambiguous attribute without table name: %s", attr_name);
             return RC::SCHEMA_FIELD_MISSING;
           }
 
-          Table *table = tables[0];
-          const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name.c_str());
-          if (nullptr == field_meta) {
-            LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), relation_attr.attribute_name.c_str());
+          Table *tbl = tables[0];
+          const FieldMeta *meta_field = tbl->table_meta().field(attr_name);
+          if (meta_field == nullptr) {
+            LOG_WARN("No such field: %s.%s.%s", db->name(), tbl->name(), attr_name);
             return RC::SCHEMA_FIELD_MISSING;
           }
 
-          query_fields.push_back(Field(table, field_meta));
-          for(auto stringSql:select_sql.stringsqlExprs){
-            if(stringSql->name().compare(relation_attr.sqlString)==0){
-              if(relation_attr.agg==MAX_AGG||relation_attr.agg==MIN_AGG||relation_attr.agg==SUM_AGG){
-                stringSql->setType(field_meta->type());
-              }else if(relation_attr.agg==COUNT_AGG){
-                stringSql->setType(INTS);
-              }else{
-                stringSql->setType(FLOATS);
+          query_fields.push_back(Field(tbl, meta_field));
+
+          for (auto sql_expr : select_sql.stringsqlExprs) {
+            if (sql_expr->name().compare(attr_node.sqlString) == 0) {
+              if (attr_node.agg == MAX_AGG || attr_node.agg == MIN_AGG || attr_node.agg == SUM_AGG) {
+                sql_expr->setType(meta_field->type());
+              } else if (attr_node.agg == COUNT_AGG) {
+                sql_expr->setType(INTS);
+              } else {
+                sql_expr->setType(FLOATS);
               }
             }
           }
         }
       }
-
 
       // create filter statement in `where` statement
       FilterStmt *filter_stmt = nullptr;
@@ -949,62 +959,71 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
         default_table = tables[0];
       }
 
-      // collect order_by_fields in `select` statement
-      std::vector<Field>order_by_fields;
-      std::vector<OrderBySequence>order_by_sequences;
-      for (int i = static_cast<int>(select_sql.order_by.size()) - 1; i >= 0; i--) {
-        const RelAttrSqlNode relation_attr = select_sql.order_by[i].attrs;
-        const OrderBySequence order_by_sequence =select_sql.order_by[i].orderBySequence;
-        if (common::is_blank(relation_attr.relation_name.c_str()) &&
-            0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {
-          LOG_WARN("invalid  ");
+      // Collect sort_fields in the `select` statement
+      std::vector<Field> sort_fields;
+      std::vector<OrderBySequence> sort_orders;
+
+      for (size_t idx = 0; idx < select_sql.order_by.size(); ++idx) {
+        const RelAttrSqlNode attr_node = select_sql.order_by[idx].attrs;
+        const OrderBySequence sort_order = select_sql.order_by[idx].orderBySequence;
+
+        const char *rel_name = attr_node.relation_name.c_str();
+        const char *attr_name = attr_node.attribute_name.c_str();
+
+        bool is_rel_name_blank = common::is_blank(rel_name);
+        bool is_attr_name_star = (strcmp(attr_name, "*") == 0);
+        bool is_rel_name_star = (strcmp(rel_name, "*") == 0);
+
+        if (is_rel_name_blank && is_attr_name_star) {
+          LOG_WARN("Invalid field specification.");
           return RC::SCHEMA_FIELD_MISSING;
+        }
 
-        } else if (!common::is_blank(relation_attr.relation_name.c_str())) {
-          const char *table_name = relation_attr.relation_name.c_str();
-          const char *field_name = relation_attr.attribute_name.c_str();
+        Table *table_ptr = nullptr;
+        const FieldMeta *field_meta_ptr = nullptr;
 
-          if (0 == strcmp(table_name, "*")) {
-            LOG_WARN("invalid field name while table is *. attr=%s", field_name);
+        if (!is_rel_name_blank) {
+          if (is_rel_name_star) {
+            LOG_WARN("Invalid field name when table is '*'. Attribute: %s", attr_name);
             return RC::SCHEMA_FIELD_MISSING;
-          } else {
-            auto iter = table_map.find(table_name);
-            if (iter == table_map.end()) {
-              LOG_WARN("no such table in from list: %s", table_name);
-              return RC::SCHEMA_FIELD_MISSING;
-            }
+          }
 
-            Table *table = iter->second;
-            if (0 == strcmp(field_name, "*")) {
-              LOG_WARN("invalid field name while table is *. attr=%s", field_name);
-              return RC::SCHEMA_FIELD_MISSING;
-            } else {
-              const FieldMeta *field_meta = table->table_meta().field(field_name);
-              if (nullptr == field_meta) {
-                LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
-                return RC::SCHEMA_FIELD_MISSING;
-              }
+          auto table_iter = table_map.find(rel_name);
+          if (table_iter == table_map.end()) {
+            LOG_WARN("No such table in FROM clause: %s", rel_name);
+            return RC::SCHEMA_FIELD_MISSING;
+          }
 
-              order_by_fields.push_back(Field(table, field_meta));
-            }
+          table_ptr = table_iter->second;
+
+          if (is_attr_name_star) {
+            LOG_WARN("Invalid field name when attribute is '*'. Table: %s", rel_name);
+            return RC::SCHEMA_FIELD_MISSING;
+          }
+
+          field_meta_ptr = table_ptr->table_meta().field(attr_name);
+          if (field_meta_ptr == nullptr) {
+            LOG_WARN("No such field: %s.%s.%s", db->name(), table_ptr->name(), attr_name);
+            return RC::SCHEMA_FIELD_MISSING;
           }
         } else {
           if (tables.size() != 1) {
-            LOG_WARN("invalid. I do not know the attr's table. attr=%s", relation_attr.attribute_name.c_str());
+            LOG_WARN("Ambiguous attribute without table name: %s", attr_name);
             return RC::SCHEMA_FIELD_MISSING;
           }
 
-          Table *table = tables[0];
-          const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name.c_str());
-          if (nullptr == field_meta) {
-            LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), relation_attr.attribute_name.c_str());
+          table_ptr = tables[0];
+          field_meta_ptr = table_ptr->table_meta().field(attr_name);
+          if (field_meta_ptr == nullptr) {
+            LOG_WARN("No such field: %s.%s.%s", db->name(), table_ptr->name(), attr_name);
             return RC::SCHEMA_FIELD_MISSING;
           }
-
-          order_by_fields.push_back(Field(table, field_meta));
         }
-        order_by_sequences.push_back(order_by_sequence);
+
+        sort_fields.push_back(Field(table_ptr, field_meta_ptr));
+        sort_orders.push_back(sort_order);
       }
+
 
       // create filter statement in `where` statement
       FilterStmt *filter_stmt = nullptr;
@@ -1027,19 +1046,19 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
       select_stmt->tables_.swap(tables);
       auto attributes(select_sql.attributes);
       std::reverse(attributes.begin(),attributes.end());
-      select_stmt->attributes_.swap(attributes);
-      select_stmt->query_fields_.swap(query_fields);
-      select_stmt->filter_stmt_ = filter_stmt;
-      select_stmt->is_agg_= false;
-      select_stmt->order_by_sequences_.swap(order_by_sequences);
-      select_stmt->order_by_fields_.swap(order_by_fields);
-      select_stmt->top_tables_=top_tables;
-      select_stmt->is_sub_select_=is_sub_select;
-      select_stmt->alias_map_.swap(alias_map);
       select_stmt->col_alias_map_.swap(col_alias_map);
       select_stmt->is_expression_select_attr_=false;
       select_stmt->all_expressions_.swap(all_expressions);
       select_stmt->is_group_=false;
+      select_stmt->attributes_.swap(attributes);
+      select_stmt->query_fields_.swap(query_fields);
+      select_stmt->filter_stmt_ = filter_stmt;
+      select_stmt->is_agg_= false;
+      select_stmt->order_by_fields_.swap(sort_fields);
+      select_stmt->order_by_sequences_.swap(sort_orders);
+      select_stmt->top_tables_=top_tables;
+      select_stmt->is_sub_select_=is_sub_select;
+      select_stmt->alias_map_.swap(alias_map);
       stmt = select_stmt;
       return RC::SUCCESS;
 
