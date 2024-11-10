@@ -23,7 +23,6 @@ RC ExplainPhysicalOperator::open(Trx *)
   ASSERT(children_.size() == 1, "explain must has 1 child");
   return RC::SUCCESS;
 }
-
 RC ExplainPhysicalOperator::close()
 {
   for (std::unique_ptr<PhysicalOperator> &child_oper : children_) {

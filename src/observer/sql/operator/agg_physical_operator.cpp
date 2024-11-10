@@ -19,7 +19,6 @@ RC AggPhysicalOperator::open(Trx *trx)
     LOG_WARN("failed to open child operator: %s", strrc(rc));
     return rc;
   }
-
   return RC::SUCCESS;
 }
 
@@ -29,7 +28,6 @@ RC AggPhysicalOperator::next()
     if (children_.empty()||finish_) {
       return RC::RECORD_EOF;
     }
-
     std::vector<Value> values;
     values.resize(attributes_.size());
     count_.resize(attributes_.size());

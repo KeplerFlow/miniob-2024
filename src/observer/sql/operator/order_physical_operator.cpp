@@ -37,8 +37,6 @@ RC OrderPhysicalOperator::open(Trx *trx)
       }
     }
   }
-
-
   TupleSortUtil::set(field_index,order_fields_,order_sequences_);
   std::sort(value_list_.begin(),value_list_.end(),TupleSortUtil::cmp);
 
