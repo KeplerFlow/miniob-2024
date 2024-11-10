@@ -19,8 +19,6 @@ RC DropTableExecutor::execute(SQLStageEvent *sql_event)
       "create table executor can not run this command: %d", static_cast<int>(stmt->type()));
 
   DropTableStmt *create_table_stmt = static_cast<DropTableStmt *>(stmt);
-
-
   RC rc = session->get_current_db()->drop_table(create_table_stmt->table());
 
   return rc;

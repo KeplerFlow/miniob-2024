@@ -78,6 +78,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         STRING_T
         FLOAT_T
         DATE_T
+        VECTOR_T
         HELP
         EXIT
         DOT //QUOTE

@@ -61,8 +61,6 @@ RC ExecuteStage::handle_request_with_physical_operator(SQLStageEvent *sql_event)
 
   unique_ptr<PhysicalOperator> &physical_operator = sql_event->physical_operator();
   ASSERT(physical_operator != nullptr, "physical operator should not be null");
-
-  // TODO 这里也可以优化一下，是否可以让physical operator自己设置tuple schema
   TupleSchema schema;
   switch (stmt->type()) {
     case StmtType::SELECT: {
@@ -216,7 +214,6 @@ RC ExecuteStage::handle_request_with_physical_operator(SQLStageEvent *sql_event)
       schema.append_cell("Query Plan");
     } break;
     default: {
-      // 只有select返回结果
     } break;
   }
 
