@@ -68,7 +68,7 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
       select_map[i]=reinterpret_cast<SelectStmt*>(selectStmt);
 
     }else{
-      const AttrType value_type = AttrType::TEXTS;
+      const AttrType value_type = updates[i].value.attr_type();
       auto value=updates[i].value;
       if (field_type != value_type) {
         if(field_type==CHARS){
