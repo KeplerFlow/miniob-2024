@@ -45,7 +45,7 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
   // check fields type（目前只支持单个字段）
   //Value value = update.value;
   const TableMeta &table_meta = table->table_meta();
-  const int value_num = 1;
+  const int value_num = update.updateValue_list.size();
   std::vector<const FieldMeta *>field_list;
   const FieldMeta *field_meta;
   for (int i=0; i<value_num; ++i) {
@@ -56,7 +56,7 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
       return RC::SCHEMA_FIELD_NOT_EXIST;
     }
     const AttrType field_type = field_meta->type();
-    if(false){
+    if(updates[i].is_select){
       Stmt * selectStmt= nullptr;
       RC rc = SelectStmt::create(db,
           updates[i].selectSqlNode,
@@ -65,10 +65,10 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
         LOG_WARN("cannot construct select stmt");
         return rc;
       }
-      //select_map[i]=reinterpret_cast<SelectStmt*>(selectStmt);
+      select_map[i]=reinterpret_cast<SelectStmt*>(selectStmt);
 
     }else{
-      const AttrType value_type = updates[i].value.attr_type();
+      const AttrType value_type = AttrType::TEXTS;
       auto value=updates[i].value;
       if (field_type != value_type) {
         if(field_type==CHARS){
