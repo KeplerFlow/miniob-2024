@@ -76,16 +76,16 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
             auto s= common::int2string(value.get_int());
             value.set_type(CHARS);
             value.set_string(s.c_str());
-          }else if(value_type==FLOATS){
-            auto s= common::float2string(value.get_float());
-            value.set_type(CHARS);
-            value.set_string(s.c_str());
           }else if(value_type==NULLS){
             if(!field_meta->is_null()){
               LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
               table_name, field_meta->name(), field_type, value_type);
               return RC::SCHEMA_FIELD_TYPE_MISMATCH;
             }
+          }else if(value_type==FLOATS){
+            auto s= common::float2string(value.get_float());
+            value.set_type(CHARS);
+            value.set_string(s.c_str());
           }else{
             LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
               table_name, field_meta->name(), field_type, value_type);
@@ -119,16 +119,16 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
             auto d= common::int2float(value.get_int());
             value.set_type(FLOATS);
             value.set_float(d);
-          }else if(value_type==CHARS){
-            auto d= common::string2float(value.get_string());
-            value.set_type(FLOATS);
-            value.set_float(d);
           }else if(value_type==NULLS){
             if(!field_meta->is_null()){
               LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
               table_name, field_meta->name(), field_type, value_type);
               return RC::SCHEMA_FIELD_TYPE_MISMATCH;
             }
+          }else if(value_type==CHARS){
+            auto d= common::string2float(value.get_string());
+            value.set_type(FLOATS);
+            value.set_float(d);
           }else{
             LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
               table_name, field_meta->name(), field_type, value_type);

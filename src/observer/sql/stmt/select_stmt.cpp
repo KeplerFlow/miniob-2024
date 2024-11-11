@@ -153,7 +153,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
   std::unordered_map<std::string, std::string> alias_map(select_sql.alias_map);
   for (auto it = alias_map.begin(); it != alias_map.end(); it++) {
     if (table_map.find(it->second) != table_map.end()) {
-      //table_map.insert(std::pair<std::string, Table *>(it->first, table_map[it->second]));
+      table_map.insert(std::pair<std::string, Table *>(it->first, table_map[it->second]));
       if(it->second==select_sql.relations[0]){
         default_table_alas=it->first;
       }
