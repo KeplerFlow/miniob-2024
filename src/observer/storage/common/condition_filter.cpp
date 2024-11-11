@@ -38,25 +38,6 @@ DefaultConditionFilter::DefaultConditionFilter()
 DefaultConditionFilter::~DefaultConditionFilter()
 {}
 
-RC DefaultConditionFilter::init(const ConDesc &left, const ConDesc &right, AttrType attr_type, CompOp comp_op)
-{
-  if (attr_type < CHARS || attr_type > FLOATS) {
-    LOG_ERROR("Invalid condition with unsupported attribute type: %d", attr_type);
-    return RC::INVALID_ARGUMENT;
-  }
-
-  if (comp_op < EQUAL_TO || comp_op >= NO_OP) {
-    LOG_ERROR("Invalid condition with unsupported compare operation: %d", comp_op);
-    return RC::INVALID_ARGUMENT;
-  }
-
-  left_ = left;
-  right_ = right;
-  attr_type_ = attr_type;
-  comp_op_ = comp_op;
-  return RC::SUCCESS;
-}
-
 RC DefaultConditionFilter::init(Table &table, const ConditionSqlNode &condition)
 {
   const TableMeta &table_meta = table.table_meta();
@@ -104,19 +85,30 @@ RC DefaultConditionFilter::init(Table &table, const ConditionSqlNode &condition)
     right.attr_length = 0;
     right.attr_offset = 0;
   }
-
-  // 校验和转换
-  //  if (!field_type_compare_compatible_table[type_left][type_right]) {
-  //    // 不能比较的两个字段， 要把信息传给客户端
-  //    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-  //  }
-  // NOTE：这里没有实现不同类型的数据比较，比如整数跟浮点数之间的对比
-  // 但是选手们还是要实现。这个功能在预选赛中会出现
   if (type_left != type_right) {
     return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
 
   return init(left, right, type_left, condition.comp);
+}
+
+RC DefaultConditionFilter::init(const ConDesc &left, const ConDesc &right, AttrType attr_type, CompOp comp_op)
+{
+  if (attr_type < CHARS || attr_type > FLOATS) {
+    LOG_ERROR("Invalid condition with unsupported attribute type: %d", attr_type);
+    return RC::INVALID_ARGUMENT;
+  }
+
+  if (comp_op < EQUAL_TO || comp_op >= NO_OP) {
+    LOG_ERROR("Invalid condition with unsupported compare operation: %d", comp_op);
+    return RC::INVALID_ARGUMENT;
+  }
+
+  left_ = left;
+  right_ = right;
+  attr_type_ = attr_type;
+  comp_op_ = comp_op;
+  return RC::SUCCESS;
 }
 
 bool DefaultConditionFilter::filter(const Record &rec) const

@@ -62,7 +62,6 @@ Value::Value(const char *s, AttrType attrType,int len /*= 0*/)
   }
 
 }
-
 void Value::set_data(char *data, int length)
 {
   switch (attr_type_) {
@@ -85,6 +84,7 @@ void Value::set_data(char *data, int length)
       length_ = length;
     } break;
     case TEXTS:{
+      //TODO
       text_=*(unsigned  long long *)data;
       length_-length;
 

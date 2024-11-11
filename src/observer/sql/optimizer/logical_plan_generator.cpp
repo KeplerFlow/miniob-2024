@@ -96,12 +96,6 @@ RC LogicalPlanGenerator::create_plan(
 
   std::unordered_map<std::string, std::string> alias_map(select_stmt->alias_map());
   for (Table *table : tables) {
-  /*  std::vector<Field> fields;
-    for (const Field &field : all_fields) {
-      if (0 == strcmp(field.table_name(), table->name())) {
-        fields.push_back(field);
-      }
-    }*/
 
     unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, true/*readonly*/));
     if (table_oper == nullptr) {

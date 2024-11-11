@@ -277,7 +277,6 @@ RC find_table(Db *db, const CLogRecord &log_record, Table *&table)
       }
     } break;
     default:{
-      // do nothing
     } break;
   }
   return RC::SUCCESS;

@@ -553,32 +553,6 @@ RC InternalIndexNodeHandler::move_last_to_front(InternalIndexNodeHandler &other,
   increase_size(-1);
   return rc;
 }
-/**
- * copy items from other node to self's right
- */
-RC InternalIndexNodeHandler::copy_from(const char *items, int num, DiskBufferPool *disk_buffer_pool)
-{
-  memcpy(__item_at(this->size()), items, static_cast<size_t>(num) * item_size());
-
-  RC rc = RC::SUCCESS;
-  PageNum this_page_num = this->page_num();
-  Frame *frame = nullptr;
-  for (int i = 0; i < num; i++) {
-    const PageNum page_num = *(const PageNum *)((items + i * item_size()) + key_size());
-    rc = disk_buffer_pool->get_this_page(page_num, &frame);
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("failed to set child's page num. child page num:%d, this page num=%d, rc=%d:%s",
-               page_num, this_page_num, rc, strrc(rc));
-      return rc;
-    }
-    IndexNodeHandler child_node(header_, frame);
-    child_node.set_parent_page_num(this_page_num);
-    frame->mark_dirty();
-    disk_buffer_pool->unpin_page(frame);
-  }
-  increase_size(num);
-  return rc;
-}
 
 RC InternalIndexNodeHandler::append(const char *item, DiskBufferPool *bp)
 {
@@ -635,94 +609,122 @@ int InternalIndexNodeHandler::item_size() const
   return key_size() + this->value_size();
 }
 
-bool InternalIndexNodeHandler::validate(const KeyComparator &comparator, DiskBufferPool *bp) const
+/**
+ * copy items from other node to self's right
+ */
+RC InternalIndexNodeHandler::copy_from(const char *items, int num, DiskBufferPool *disk_buffer_pool)
 {
-  bool result = IndexNodeHandler::validate();
-  if (false == result) {
+  memcpy(__item_at(this->size()), items, static_cast<size_t>(num) * item_size());
+
+  RC rc = RC::SUCCESS;
+  PageNum this_page_num = this->page_num();
+  Frame *frame = nullptr;
+  for (int i = 0; i < num; i++) {
+    const PageNum page_num = *(const PageNum *)((items + i * item_size()) + key_size());
+    rc = disk_buffer_pool->get_this_page(page_num, &frame);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to set child's page num. child page num:%d, this page num=%d, rc=%d:%s",
+               page_num, this_page_num, rc, strrc(rc));
+      return rc;
+    }
+    IndexNodeHandler child_node(header_, frame);
+    child_node.set_parent_page_num(this_page_num);
+    frame->mark_dirty();
+    disk_buffer_pool->unpin_page(frame);
+  }
+  increase_size(num);
+  return rc;
+}
+
+bool InternalIndexNodeHandler::validate(const KeyComparator &comparator, DiskBufferPool *buffer_pool) const
+{
+  // First, validate using the base class's validate method.
+  bool is_valid = IndexNodeHandler::validate();
+  if (!is_valid) {
     return false;
   }
 
-  const int node_size = size();
-  for (int i = 2; i < node_size; i++) {
-    if (comparator(__key_at(i - 1), __key_at(i)) >= 0) {
-      LOG_WARN("page number = %d, invalid key order. id1=%d,id2=%d, this=%s",
-          page_num(), i - 1, i, to_string(*this).c_str());
+  // Validate key ordering within the node
+  int num_keys = size();
+  for (int index = 2; index < num_keys; ++index) {
+    if (comparator(__key_at(index - 1), __key_at(index)) >= 0) {
+      LOG_WARN("Invalid key order detected at page %d between keys %d and %d. Current object=%s",
+               page_num(), index - 1, index, to_string(*this).c_str());
       return false;
     }
   }
 
-  for (int i = 0; result && i < node_size; i++) {
-    PageNum page_num = *(PageNum *)__value_at(i);
-    if (page_num < 0) {
-      LOG_WARN("this page num=%d, got invalid child page. page num=%d", this->page_num(), page_num);
-    } else {
-      Frame *child_frame;
-      RC rc = bp->get_this_page(page_num, &child_frame);
-      if (rc != RC::SUCCESS) {
-        LOG_WARN("failed to fetch child page while validate internal page. page num=%d, rc=%d:%s", 
-                 page_num, rc, strrc(rc));
-      } else {
-        IndexNodeHandler child_node(header_, child_frame);
-        if (child_node.parent_page_num() != this->page_num()) {
-          LOG_WARN("child's parent page num is invalid. child page num=%d, parent page num=%d, this page num=%d",
-              child_node.page_num(), child_node.parent_page_num(), this->page_num());
-          result = false;
-        }
-        bp->unpin_page(child_frame);
+  // Validate child nodes are correctly linked back to this node
+  for (int i = 0; i < num_keys && is_valid; ++i) {
+    PageNum child_page = *(PageNum *)__value_at(i);
+    if (child_page < 0) {
+      LOG_WARN("Invalid child page number %d at this page %d", child_page, page_num());
+      continue; // Continue to check other children
+    }
+
+    Frame *child_frame;
+    RC fetch_status = buffer_pool->get_this_page(child_page, &child_frame);
+    if (fetch_status != RC::SUCCESS) {
+      LOG_WARN("Failed to load child page %d. Error %d:%s", child_page, fetch_status, strrc(fetch_status));
+      continue; // Continue to check other children
+    }
+
+    IndexNodeHandler child_node(header_, child_frame);
+    if (child_node.parent_page_num() != this->page_num()) {
+      LOG_WARN("Mismatch in child's parent page number. Expected %d, found %d at child page %d",
+               this->page_num(), child_node.parent_page_num(), child_page);
+      is_valid = false;
+    }
+    buffer_pool->unpin_page(child_frame);
+  }
+
+  // Early exit if an invalid child was found
+  if (!is_valid) {
+    return false;
+  }
+
+  // Validate the linkage with the parent node
+  PageNum parent_page_num = this->parent_page_num();
+  if (parent_page_num != BP_INVALID_PAGE_NUM) {
+    Frame *parent_frame;
+    RC parent_fetch_status = buffer_pool->get_this_page(parent_page_num, &parent_frame);
+    if (parent_fetch_status != RC::SUCCESS) {
+      LOG_WARN("Failed to load parent page %d. Error %d:%s", parent_page_num, parent_fetch_status, strrc(parent_fetch_status));
+      return false;
+    }
+
+    InternalIndexNodeHandler parent_node(header_, parent_frame);
+    int this_index_in_parent = parent_node.value_index(this->page_num());
+    if (this_index_in_parent < 0) {
+      LOG_WARN("This node %d is not found in its parent %d", this->page_num(), parent_page_num);
+      buffer_pool->unpin_page(parent_frame);
+      return false;
+    }
+
+    // Validate this node's keys against parent node's keys
+    if (this_index_in_parent > 0) {
+      if (comparator(__key_at(1), parent_node.key_at(this_index_in_parent)) < 0) {
+        LOG_WARN("Key mismatch with parent at this page %d, expected greater than %d",
+                 this->page_num(), this_index_in_parent);
+        buffer_pool->unpin_page(parent_frame);
+        return false;
       }
     }
-  }
 
-  if (!result) {
-    return result;
-  }
-
-  const PageNum parent_page_num = this->parent_page_num();
-  if (parent_page_num == BP_INVALID_PAGE_NUM) {
-    return result;
-  }
-
-  Frame *parent_frame;
-  RC rc = bp->get_this_page(parent_page_num, &parent_frame);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to fetch parent page. page num=%d, rc=%d:%s", parent_page_num, rc, strrc(rc));
-    return false;
-  }
-
-  InternalIndexNodeHandler parent_node(header_, parent_frame);
-  int index_in_parent = parent_node.value_index(this->page_num());
-  if (index_in_parent < 0) {
-    LOG_WARN("invalid internal node. cannot find index in parent. this page num=%d, parent page num=%d",
-             this->page_num(), parent_page_num);
-    bp->unpin_page(parent_frame);
-    return false;
-  }
-
-  if (0 != index_in_parent) {
-    int cmp_result = comparator(__key_at(1), parent_node.key_at(index_in_parent));
-    if (cmp_result < 0) {
-      LOG_WARN("invalid internal node. the second item should be greate than or equal to parent item. "
-               "this page num=%d, parent page num=%d, index in parent=%d",
-               this->page_num(), parent_node.page_num(), index_in_parent);
-      bp->unpin_page(parent_frame);
-      return false;
+    if (this_index_in_parent < parent_node.size() - 1) {
+      if (comparator(__key_at(num_keys - 1), parent_node.key_at(this_index_in_parent + 1)) >= 0) {
+        LOG_WARN("Key ordering error with next sibling in parent at this page %d, expected less than %d",
+                 this->page_num(), this_index_in_parent + 1);
+        buffer_pool->unpin_page(parent_frame);
+        return false;
+      }
     }
+    buffer_pool->unpin_page(parent_frame);
   }
 
-  if (index_in_parent < parent_node.size() - 1) {
-    int cmp_result = comparator(__key_at(size() - 1), parent_node.key_at(index_in_parent + 1));
-    if (cmp_result >= 0) {
-      LOG_WARN("invalid internal node. last item should be less than the item at the first after item in parent."
-               "this page num=%d, parent page num=%d, parent item to compare=%d",
-               this->page_num(), parent_node.page_num(), index_in_parent + 1);
-      bp->unpin_page(parent_frame);
-      return false;
-    }
-  }
-  bp->unpin_page(parent_frame);
-
-  return result;
+  return is_valid;
 }
+
 
 /////////////////////////////////////////////////////////////////////////////////
 

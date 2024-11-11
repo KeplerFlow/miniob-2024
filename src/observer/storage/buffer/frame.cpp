@@ -36,22 +36,6 @@ size_t FrameId::hash() const
   return (static_cast<size_t>(file_desc_) << 32L) | page_num_;
 }
 
-int FrameId::file_desc() const
-{
-  return file_desc_;
-}
-PageNum FrameId::page_num() const
-{
-  return page_num_;
-}
-
-string to_string(const FrameId &frame_id)
-{
-  stringstream ss;
-  ss << "fd:" << frame_id.file_desc() << ",page_num:" << frame_id.page_num();
-  return ss.str();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 intptr_t get_default_debug_xid()
 {
@@ -70,6 +54,22 @@ intptr_t get_default_debug_xid()
   } else {
     return reinterpret_cast<intptr_t>(session);
   }
+}
+
+int FrameId::file_desc() const
+{
+  return file_desc_;
+}
+PageNum FrameId::page_num() const
+{
+  return page_num_;
+}
+
+string to_string(const FrameId &frame_id)
+{
+  stringstream ss;
+  ss << "fd:" << frame_id.file_desc() << ",page_num:" << frame_id.page_num();
+  return ss.str();
 }
 
 void Frame::write_latch()

@@ -100,41 +100,6 @@ RC Db::create_table(const char *table_name, int attribute_count, const AttrInfoS
   LOG_INFO("Create table success. table name=%s, table_id:%d", table_name, table_id);
   return RC::SUCCESS;
 }
-RC Db::drop_table(Table * table){
-
-  std::vector<std::string>index_names;
-  table->get_index_name(index_names);
-  const char *table_name=table->name();
-  delete table;
-  opened_tables_.erase(table_name);
-  std::string table_meta_file_path = table_meta_file(path_.c_str(), table_name);
-  std::string table_data_file_path = table_data_file(path_.c_str(),table_name);
-  remove(table_meta_file_path.c_str());
-  remove(table_data_file_path.c_str());
-  for(auto index_name:index_names){
-    auto path=table_index_file(path_.c_str(),table_name,index_name.c_str());
-    remove(path.c_str());
-  }
-  return RC::SUCCESS;
-}
-Table *Db::find_table(const char *table_name) const
-{
-  std::unordered_map<std::string, Table *>::const_iterator iter = opened_tables_.find(table_name);
-  if (iter != opened_tables_.end()) {
-    return iter->second;
-  }
-  return nullptr;
-}
-
-Table *Db::find_table(int32_t table_id) const
-{
-  for (auto pair : opened_tables_) {
-    if (pair.second->table_id() == table_id) {
-      return pair.second;
-    }
-  }
-  return nullptr;
-}
 
 RC Db::open_all_tables()
 {
@@ -171,6 +136,53 @@ RC Db::open_all_tables()
 
   LOG_INFO("All table have been opened. num=%d", opened_tables_.size());
   return rc;
+}
+
+RC Db::drop_table(Table *target_table) {
+  // Retrieve all associated index names before deletion
+  std::vector<std::string> associated_indexes;
+  target_table->get_index_name(associated_indexes);
+  const char *table_name = target_table->name();
+
+  // Delete the table object and remove from the opened tables map
+  delete target_table;
+  opened_tables_.erase(table_name);
+
+  // Construct paths for table's metadata and data files
+  std::string metadata_path = table_meta_file(path_.c_str(), table_name);
+  std::string data_path = table_data_file(path_.c_str(), table_name);
+
+  // Remove metadata and data files
+  remove(metadata_path.c_str());
+  remove(data_path.c_str());
+
+  // Remove index files associated with the table
+  for (const std::string &index_name : associated_indexes) {
+    std::string index_file_path = table_index_file(path_.c_str(), table_name, index_name.c_str());
+    remove(index_file_path.c_str());
+  }
+
+  return RC::SUCCESS;
+}
+
+
+Table *Db::find_table(const char *table_name) const
+{
+  std::unordered_map<std::string, Table *>::const_iterator iter = opened_tables_.find(table_name);
+  if (iter != opened_tables_.end()) {
+    return iter->second;
+  }
+  return nullptr;
+}
+
+Table *Db::find_table(int32_t table_id) const
+{
+  for (auto pair : opened_tables_) {
+    if (pair.second->table_id() == table_id) {
+      return pair.second;
+    }
+  }
+  return nullptr;
 }
 
 const char *Db::name() const

@@ -94,28 +94,6 @@ int _align8(int size)
   return size / 8 * 8 + ((size % 8 == 0) ? 0 : 8);
 }
 
-CLogRecord *CLogRecord::build_mtr_record(CLogType type, int32_t trx_id)
-{
-  CLogRecord *log_record = new CLogRecord();
-  CLogRecordHeader &header = log_record->header_;
-  header.trx_id_ = trx_id;
-  header.type_   = clog_type_to_integer(type);
-  return log_record;
-}
-
-CLogRecord *CLogRecord::build_commit_record(int32_t trx_id, int32_t commit_xid)
-{
-  CLogRecord *log_record = new CLogRecord();
-  CLogRecordHeader &header = log_record->header_;
-  header.type_ = clog_type_to_integer(CLogType::MTR_COMMIT);
-  header.trx_id_ = trx_id;
-  header.logrec_len_ = sizeof(CLogRecordCommitData);
-  
-  CLogRecordCommitData &commit_record = log_record->commit_record();
-  commit_record.commit_xid_ = commit_xid;
-  return log_record;
-}
-
 CLogRecord *CLogRecord::build_data_record(CLogType type, 
                                           int32_t trx_id, 
                                           int32_t table_id, 
@@ -146,6 +124,28 @@ CLogRecord *CLogRecord::build_data_record(CLogType type,
 
     memcpy(data_record.data_, data, data_len);
   }
+  return log_record;
+}
+
+CLogRecord *CLogRecord::build_mtr_record(CLogType type, int32_t trx_id)
+{
+  CLogRecord *log_record = new CLogRecord();
+  CLogRecordHeader &header = log_record->header_;
+  header.trx_id_ = trx_id;
+  header.type_   = clog_type_to_integer(type);
+  return log_record;
+}
+
+CLogRecord *CLogRecord::build_commit_record(int32_t trx_id, int32_t commit_xid)
+{
+  CLogRecord *log_record = new CLogRecord();
+  CLogRecordHeader &header = log_record->header_;
+  header.type_ = clog_type_to_integer(CLogType::MTR_COMMIT);
+  header.trx_id_ = trx_id;
+  header.logrec_len_ = sizeof(CLogRecordCommitData);
+  
+  CLogRecordCommitData &commit_record = log_record->commit_record();
+  commit_record.commit_xid_ = commit_xid;
   return log_record;
 }
 

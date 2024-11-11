@@ -431,32 +431,43 @@ ConjunctionExpr::ConjunctionExpr(Type type, vector<unique_ptr<Expression>> &chil
     : conjunction_type_(type), children_(std::move(children))
 {}
 
-RC ConjunctionExpr::get_value(const Tuple &tuple, Value &value) const
-{
-  RC rc = RC::SUCCESS;
-  if (children_.empty()) {
-    value.set_boolean(true);
-    return rc;
-  }
+RC ConjunctionExpr::get_value(const Tuple &tuple, Value &result) const {
+    // Initialize the result as success
+    RC status = RC::SUCCESS;
 
-  Value tmp_value;
-  for (const unique_ptr<Expression> &expr : children_) {
-    rc = expr->get_value(tuple, tmp_value);
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("failed to get value by child expression. rc=%s", strrc(rc));
-      return rc;
+    // Handle the trivial case where there are no child expressions
+    if (children_.empty()) {
+        result.set_boolean(true);  // The conjunction of zero conditions in logic is typically true.
+        return status;
     }
-    bool bool_value = tmp_value.get_boolean();
-    if ((conjunction_type_ == Type::AND && !bool_value) || (conjunction_type_ == Type::OR && bool_value)) {
-      value.set_boolean(bool_value);
-      return rc;
-    }
-  }
 
-  bool default_value = (conjunction_type_ == Type::AND);
-  value.set_boolean(default_value);
-  return rc;
+    Value evaluated_value;
+    for (const auto &child_expr : children_) {
+        status = child_expr->get_value(tuple, evaluated_value);
+        if (status != RC::SUCCESS) {
+            LOG_WARN("Failed to evaluate child expression. Error: %s", strrc(status));
+            return status;
+        }
+
+        // Retrieve the boolean result from the evaluated expression
+        bool current_value = evaluated_value.get_boolean();
+
+        // Determine the result based on the conjunction type
+        if (conjunction_type_ == Type::AND && !current_value) {
+            result.set_boolean(false);  // Short-circuit: if one is false, result is false
+            return status;
+        }
+        if (conjunction_type_ == Type::OR && current_value) {
+            result.set_boolean(true);  // Short-circuit: if one is true, result is true
+            return status;
+        }
+    }
+
+    // If none of the expressions short-circuit the evaluation, set default result
+    result.set_boolean(conjunction_type_ == Type::AND);  // True if AND and all true; false if OR and all false
+    return status;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -619,7 +630,6 @@ RC FuncExpr::get_value(const Tuple &tuple, Value &value) const
   {
     float tuple_float = tuple_value.get_float();
     if (roundparam_.bits.length() == 0) {
-      // 只有一个参数
       value.set_int(round(tuple_float));
     } else if (roundparam_.bits.attr_type() != INTS) {
       LOG_ERROR("round() Func bits error.");

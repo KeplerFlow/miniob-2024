@@ -103,31 +103,6 @@ RC PersistHandler::close_file()
   return rc;
 }
 
-RC PersistHandler::remove_file(const char *file_name)
-{
-  RC rc = RC::SUCCESS;
-
-  if (file_name != nullptr) {
-    if (remove(file_name) == 0) {
-      LOG_INFO("Successfully remove file %s.", file_name);
-    } else {
-      LOG_ERROR("Failed to remove file %s, error:%s", file_name, strerror(errno));
-      rc = RC::FILE_REMOVE;
-    }
-  } else if (!file_name_.empty()) {
-    if (file_desc_ < 0 || (rc = close_file()) == RC::SUCCESS) {
-      if (remove(file_name_.c_str()) == 0) {
-        LOG_INFO("Successfully remove file %s.", file_name_.c_str());
-      } else {
-        LOG_ERROR("Failed to remove file %s, error:%s", file_name_.c_str(), strerror(errno));
-        rc = RC::FILE_REMOVE;
-      }
-    }
-  }
-
-  return rc;
-}
-
 RC PersistHandler::write_file(int size, const char *data, int64_t *out_size)
 {
   RC rc = RC::SUCCESS;
@@ -149,6 +124,31 @@ RC PersistHandler::write_file(int size, const char *data, int64_t *out_size)
     }
     if (out_size != nullptr) {
       *out_size = write_size;
+    }
+  }
+
+  return rc;
+}
+
+RC PersistHandler::remove_file(const char *file_name)
+{
+  RC rc = RC::SUCCESS;
+
+  if (file_name != nullptr) {
+    if (remove(file_name) == 0) {
+      LOG_INFO("Successfully remove file %s.", file_name);
+    } else {
+      LOG_ERROR("Failed to remove file %s, error:%s", file_name, strerror(errno));
+      rc = RC::FILE_REMOVE;
+    }
+  } else if (!file_name_.empty()) {
+    if (file_desc_ < 0 || (rc = close_file()) == RC::SUCCESS) {
+      if (remove(file_name_.c_str()) == 0) {
+        LOG_INFO("Successfully remove file %s.", file_name_.c_str());
+      } else {
+        LOG_ERROR("Failed to remove file %s, error:%s", file_name_.c_str(), strerror(errno));
+        rc = RC::FILE_REMOVE;
+      }
     }
   }
 

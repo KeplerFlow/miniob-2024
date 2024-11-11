@@ -216,7 +216,6 @@ RC ExecuteStage::handle_request_with_physical_operator(SQLStageEvent *sql_event)
     default: {
     } break;
   }
-
   SqlResult *sql_result = sql_event->session_event()->sql_result();
   sql_result->set_tuple_schema(schema);
   sql_result->set_operator(std::move(physical_operator));

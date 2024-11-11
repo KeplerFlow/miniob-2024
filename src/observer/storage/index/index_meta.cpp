@@ -39,19 +39,6 @@ RC IndexMeta::init(const char *name, std::vector<const FieldMeta *> &field,bool 
   return RC::SUCCESS;
 }
 
-void IndexMeta::to_json(Json::Value &json_value) const
-{
-  json_value[FIELD_NAME] = name_;
-  Json::Value fields_value;
-  for (const std::string &field : field_) {
-    Json::Value field_value;
-    field_value[FIELD_NAME] = field;
-    fields_value.append(std::move(field_value));
-  }
-  json_value[INDEX_FIELD_NAMES] = std::move(fields_value);
-  json_value[UNIQUE]=is_unique_;
-}
-
 RC IndexMeta::from_json(const TableMeta &table, const Json::Value &json_value, IndexMeta &index)
 {
   const Json::Value &name_value = json_value[FIELD_NAME];
@@ -86,6 +73,19 @@ RC IndexMeta::from_json(const TableMeta &table, const Json::Value &json_value, I
   }
 
   return index.init(name_value.asCString(), fields,unique);
+}
+
+void IndexMeta::to_json(Json::Value &json_value) const
+{
+  json_value[FIELD_NAME] = name_;
+  Json::Value fields_value;
+  for (const std::string &field : field_) {
+    Json::Value field_value;
+    field_value[FIELD_NAME] = field;
+    fields_value.append(std::move(field_value));
+  }
+  json_value[INDEX_FIELD_NAMES] = std::move(fields_value);
+  json_value[UNIQUE]=is_unique_;
 }
 
 const char *IndexMeta::name() const

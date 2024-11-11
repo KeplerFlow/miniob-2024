@@ -186,7 +186,6 @@ const IndexMeta *TableMeta::find_index_by_field(const char *field) const
   }
   return nullptr;
 }
-
 const IndexMeta *TableMeta::index(int i) const
 {
   return &indexes_[i];

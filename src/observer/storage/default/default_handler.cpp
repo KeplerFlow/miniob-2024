@@ -148,26 +148,6 @@ RC DefaultHandler::open_db(const char *dbname)
   return ret;
 }
 
-RC DefaultHandler::close_db(const char *dbname)
-{
-  return RC::UNIMPLENMENT;
-}
-
-RC DefaultHandler::execute(const char *sql)
-{
-  return RC::UNIMPLENMENT;
-}
-
-RC DefaultHandler::create_table(
-    const char *dbname, const char *relation_name, int attribute_count, const AttrInfoSqlNode *attributes)
-{
-  Db *db = find_db(dbname);
-  if (db == nullptr) {
-    return RC::SCHEMA_DB_NOT_OPENED;
-  }
-  return db->create_table(relation_name, attribute_count, attributes);
-}
-
 RC DefaultHandler::drop_table(const char *dbname, const char *relation_name)
 {
   return RC::UNIMPLENMENT;
@@ -194,6 +174,26 @@ Table *DefaultHandler::find_table(const char *dbname, const char *table_name) co
   }
 
   return db->find_table(table_name);
+}
+
+RC DefaultHandler::close_db(const char *dbname)
+{
+  return RC::UNIMPLENMENT;
+}
+
+RC DefaultHandler::execute(const char *sql)
+{
+  return RC::UNIMPLENMENT;
+}
+
+RC DefaultHandler::create_table(
+    const char *dbname, const char *relation_name, int attribute_count, const AttrInfoSqlNode *attributes)
+{
+  Db *db = find_db(dbname);
+  if (db == nullptr) {
+    return RC::SCHEMA_DB_NOT_OPENED;
+  }
+  return db->create_table(relation_name, attribute_count, attributes);
 }
 
 RC DefaultHandler::sync()

@@ -453,6 +453,29 @@ RC DiskBufferPool::purge_page(PageNum page_num)
   return RC::SUCCESS;
 }
 
+
+RC DiskBufferPool::flush_page_internal(Frame &frame)
+{
+  // The better way is use mmap the block into memory,
+  // so it is easier to flush data to file.
+
+  Page &page = frame.page();
+  int64_t offset = ((int64_t)page.page_num) * sizeof(Page);
+  if (lseek(file_desc_, offset, SEEK_SET) == offset - 1) {
+    LOG_ERROR("Failed to flush page %lld of %d due to failed to seek %s.", offset, file_desc_, strerror(errno));
+    return RC::IOERR_SEEK;
+  }
+
+  if (writen(file_desc_, &page, sizeof(Page)) != 0) {
+    LOG_ERROR("Failed to flush page %lld of %d due to %s.", offset, file_desc_, strerror(errno));
+    return RC::IOERR_WRITE;
+  }
+  frame.clear_dirty();
+  LOG_DEBUG("Flush block. file desc=%d, pageNum=%d, pin count=%d", file_desc_, page.page_num, frame.pin_count());
+
+  return RC::SUCCESS;
+}
+
 RC DiskBufferPool::purge_all_pages()
 {
   std::list<Frame *> used = frame_manager_.find_list(file_desc_);
@@ -491,28 +514,6 @@ RC DiskBufferPool::flush_page(Frame &frame)
   return flush_page_internal(frame);
 }
 
-RC DiskBufferPool::flush_page_internal(Frame &frame)
-{
-  // The better way is use mmap the block into memory,
-  // so it is easier to flush data to file.
-
-  Page &page = frame.page();
-  int64_t offset = ((int64_t)page.page_num) * sizeof(Page);
-  if (lseek(file_desc_, offset, SEEK_SET) == offset - 1) {
-    LOG_ERROR("Failed to flush page %lld of %d due to failed to seek %s.", offset, file_desc_, strerror(errno));
-    return RC::IOERR_SEEK;
-  }
-
-  if (writen(file_desc_, &page, sizeof(Page)) != 0) {
-    LOG_ERROR("Failed to flush page %lld of %d due to %s.", offset, file_desc_, strerror(errno));
-    return RC::IOERR_WRITE;
-  }
-  frame.clear_dirty();
-  LOG_DEBUG("Flush block. file desc=%d, pageNum=%d, pin count=%d", file_desc_, page.page_num, frame.pin_count());
-
-  return RC::SUCCESS;
-}
-
 RC DiskBufferPool::flush_all_pages()
 {
   std::list<Frame *> used = frame_manager_.find_list(file_desc_);
@@ -522,22 +523,6 @@ RC DiskBufferPool::flush_all_pages()
       LOG_WARN("failed to flush all pages");
       return rc;
     }
-  }
-  return RC::SUCCESS;
-}
-
-RC DiskBufferPool::recover_page(PageNum page_num)
-{
-  int byte = 0, bit = 0;
-  byte = page_num / 8;
-  bit = page_num % 8;
-
-  std::scoped_lock lock_guard(lock_);
-  if (!(file_header_->bitmap[byte] & (1 << bit))) {
-    file_header_->bitmap[byte] |= (1 << bit);
-    file_header_->allocated_pages++;
-    file_header_->page_count++;
-    hdr_frame_->mark_dirty();
   }
   return RC::SUCCESS;
 }
@@ -573,6 +558,67 @@ RC DiskBufferPool::allocate_frame(PageNum page_num, Frame **buffer)
     (void)frame_manager_.purge_frames(1/*count*/, purger);
   }
   return RC::BUFFERPOOL_NOBUF;
+}
+
+RC BufferPoolManager::create_file(const char *file_name)
+{
+  int fd = open(file_name, O_RDWR | O_CREAT | O_EXCL, S_IREAD | S_IWRITE);
+  if (fd < 0) {
+    LOG_ERROR("Failed to create %s, due to %s.", file_name, strerror(errno));
+    return RC::SCHEMA_DB_EXIST;
+  }
+
+  close(fd);
+
+  /**
+   * Here don't care about the failure
+   */
+  fd = open(file_name, O_RDWR);
+  if (fd < 0) {
+    LOG_ERROR("Failed to open for readwrite %s, due to %s.", file_name, strerror(errno));
+    return RC::IOERR_ACCESS;
+  }
+
+  Page page;
+  memset(&page, 0, BP_PAGE_SIZE);
+
+  BPFileHeader *file_header = (BPFileHeader *)page.data;
+  file_header->allocated_pages = 1;
+  file_header->page_count = 1;
+
+  char *bitmap = file_header->bitmap;
+  bitmap[0] |= 0x01;
+  if (lseek(fd, 0, SEEK_SET) == -1) {
+    LOG_ERROR("Failed to seek file %s to position 0, due to %s .", file_name, strerror(errno));
+    close(fd);
+    return RC::IOERR_SEEK;
+  }
+
+  if (writen(fd, (char *)&page, BP_PAGE_SIZE) != 0) {
+    LOG_ERROR("Failed to write header to file %s, due to %s.", file_name, strerror(errno));
+    close(fd);
+    return RC::IOERR_WRITE;
+  }
+
+  close(fd);
+  LOG_INFO("Successfully create %s.", file_name);
+  return RC::SUCCESS;
+}
+
+RC DiskBufferPool::recover_page(PageNum page_num)
+{
+  int byte = 0, bit = 0;
+  byte = page_num / 8;
+  bit = page_num % 8;
+
+  std::scoped_lock lock_guard(lock_);
+  if (!(file_header_->bitmap[byte] & (1 << bit))) {
+    file_header_->bitmap[byte] |= (1 << bit);
+    file_header_->allocated_pages++;
+    file_header_->page_count++;
+    hdr_frame_->mark_dirty();
+  }
+  return RC::SUCCESS;
 }
 
 RC DiskBufferPool::check_page_num(PageNum page_num)
@@ -631,51 +677,6 @@ BufferPoolManager::~BufferPoolManager()
   for (auto &iter : tmp_bps) {
     delete iter.second;
   }
-}
-
-RC BufferPoolManager::create_file(const char *file_name)
-{
-  int fd = open(file_name, O_RDWR | O_CREAT | O_EXCL, S_IREAD | S_IWRITE);
-  if (fd < 0) {
-    LOG_ERROR("Failed to create %s, due to %s.", file_name, strerror(errno));
-    return RC::SCHEMA_DB_EXIST;
-  }
-
-  close(fd);
-
-  /**
-   * Here don't care about the failure
-   */
-  fd = open(file_name, O_RDWR);
-  if (fd < 0) {
-    LOG_ERROR("Failed to open for readwrite %s, due to %s.", file_name, strerror(errno));
-    return RC::IOERR_ACCESS;
-  }
-
-  Page page;
-  memset(&page, 0, BP_PAGE_SIZE);
-
-  BPFileHeader *file_header = (BPFileHeader *)page.data;
-  file_header->allocated_pages = 1;
-  file_header->page_count = 1;
-
-  char *bitmap = file_header->bitmap;
-  bitmap[0] |= 0x01;
-  if (lseek(fd, 0, SEEK_SET) == -1) {
-    LOG_ERROR("Failed to seek file %s to position 0, due to %s .", file_name, strerror(errno));
-    close(fd);
-    return RC::IOERR_SEEK;
-  }
-
-  if (writen(fd, (char *)&page, BP_PAGE_SIZE) != 0) {
-    LOG_ERROR("Failed to write header to file %s, due to %s.", file_name, strerror(errno));
-    close(fd);
-    return RC::IOERR_WRITE;
-  }
-
-  close(fd);
-  LOG_INFO("Successfully create %s.", file_name);
-  return RC::SUCCESS;
 }
 
 RC BufferPoolManager::open_file(const char *_file_name, DiskBufferPool *&_bp)
