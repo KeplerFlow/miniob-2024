@@ -147,8 +147,6 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
     }
   }
 
-
-  // 将别名也添加到table_map中去，为了Filter中查找&
   std::string default_table_alas;
   std::unordered_map<std::string, std::string> alias_map(select_sql.alias_map);
   for (auto it = alias_map.begin(); it != alias_map.end(); it++) {
@@ -160,7 +158,6 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
     }
   }
 
-  // 为列的别名生成别名映射关系
   std::unordered_map<std::string, std::string> col_alias_map;
   for (auto &attribute : select_sql.attributes) {
     if (!attribute.alias_name.empty()) {
@@ -320,13 +317,10 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
       auto attributes_expression(select_sql.attributes_expression);
       select_stmt->attributes_expression_.swap(attributes_expression);
       select_stmt->is_group_=false;
-      //auto stringsqlExprs(select_sql.stringsqlExprs);
-      //select_stmt->stringsqlExprs.swap(stringsqlExprs);
       stmt = select_stmt;
       return RC::SUCCESS;
 
     }else{
-      // collect query fields in `select` statement
       std::vector<Field> query_fields;
       for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--) {
         const RelAttrSqlNode &relation_attr = select_sql.attributes[i];
@@ -842,9 +836,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
           LOG_WARN("cannot construct filter stmt");
           return rc;
         }
-        // everything alright
         SelectStmt *select_stmt = new SelectStmt();
-        // TODO add expression copy
         select_stmt->tables_.swap(tables);
         auto attributes(select_sql.attributes);
         std::reverse(attributes.begin(),attributes.end());
@@ -1014,7 +1006,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
       std::vector<Field> sort_fields;
       std::vector<OrderBySequence> sort_orders;
 
-      for (size_t idx = 0; idx < select_sql.order_by.size(); ++idx) {
+      for (size_t idx = static_cast<int>(select_sql.order_by.size()) - 1; idx >=0; idx--) {
         const RelAttrSqlNode attr_node = select_sql.order_by[idx].attrs;
         const OrderBySequence sort_order = select_sql.order_by[idx].orderBySequence;
 
@@ -1069,9 +1061,8 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
             LOG_WARN("No such field: %s.%s.%s", db->name(), table_ptr->name(), attr_name);
             return RC::SCHEMA_FIELD_MISSING;
           }
+          sort_fields.push_back(Field(table_ptr, field_meta_ptr));
         }
-
-        sort_fields.push_back(Field(table_ptr, field_meta_ptr));
         sort_orders.push_back(sort_order);
       }
 
@@ -1115,9 +1106,4 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt,bool 
 
     }
   }
-
-
-
-
-
 }
