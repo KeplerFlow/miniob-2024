@@ -58,6 +58,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         CREATE
         DROP
         TABLE
+        VIEW
         TABLES
         INDEX
         CALC
