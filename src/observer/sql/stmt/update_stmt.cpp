@@ -48,138 +48,79 @@ RC UpdateStmt::create(Db *db,  UpdateSqlNode &update, Stmt *&stmt)
   const int value_num = update.updateValue_list.size();
   std::vector<const FieldMeta *>field_list;
   const FieldMeta *field_meta;
-  for (int i=0; i<value_num; ++i) {
-    field_meta = table_meta.field(updates[i].attribute_name.c_str());
-    field_list.push_back(field_meta);
-    if (field_meta == nullptr) {
-      LOG_WARN("field does not exist. table=%s, field=%s", table_name, updates[i].attribute_name.c_str());
-      return RC::SCHEMA_FIELD_NOT_EXIST;
-    }
-    const AttrType field_type = field_meta->type();
-    if(updates[i].is_select){
-      Stmt * selectStmt= nullptr;
-      RC rc = SelectStmt::create(db,
-          updates[i].selectSqlNode,
-          selectStmt);
-      if (rc != RC::SUCCESS) {
-        LOG_WARN("cannot construct select stmt");
-        return rc;
+  // Iterating over updates to check field validity
+  for (int index = 0; index < value_num; ++index) {
+      const FieldMeta *current_field_meta = table_meta.field(updates[index].attribute_name.c_str());
+      field_list.push_back(current_field_meta);
+
+      if (current_field_meta == nullptr) {
+          LOG_WARN("Missing field in schema. table=%s, field=%s", table_name, updates[index].attribute_name.c_str());
+          return RC::SCHEMA_FIELD_NOT_EXIST;
       }
-      select_map[i]=reinterpret_cast<SelectStmt*>(selectStmt);
 
-    }else{
-      const AttrType value_type = updates[i].value.attr_type();
-      auto value=updates[i].value;
-      if (field_type != value_type) {
-        if(field_type==CHARS){
-          if(value_type==INTS){
-            auto s= common::int2string(value.get_int());
-            value.set_type(CHARS);
-            value.set_string(s.c_str());
-          }else if(value_type==FLOATS){
-            auto s= common::float2string(value.get_float());
-            value.set_type(CHARS);
-            value.set_string(s.c_str());
-          }else if(value_type==NULLS){
-            if(!field_meta->is_null()){
-              LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-              table_name, field_meta->name(), field_type, value_type);
-              return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-            }
-          }else{
-            LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-              table_name, field_meta->name(), field_type, value_type);
-            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-
+      AttrType current_field_type = current_field_meta->type();
+      if (updates[index].is_select) {
+          Stmt *select_statement = nullptr;
+          RC status = SelectStmt::create(db, updates[index].selectSqlNode, select_statement);
+          if (status != RC::SUCCESS) {
+              LOG_WARN("Select statement construction failed");
+              return status;
           }
-        }else if(field_type==INTS){
-          if(value_type==CHARS){
-            auto d= common::string2float(value.get_string());
-            auto integer= common::float2int(d);
-            value.set_type(INTS);
-            value.set_int(integer);
-          }else if(value_type==FLOATS){
-            auto integer= common::float2int(value.get_float());
-            value.set_type(INTS);
-            value.set_int(integer);
-
-          }else if(value_type==NULLS){
-            if(!field_meta->is_null()){
-              LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-              table_name, field_meta->name(), field_type, value_type);
-              return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-            }
-          }else{
-            LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-              table_name, field_meta->name(), field_type, value_type);
-            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          select_map[index] = reinterpret_cast<SelectStmt*>(select_statement);
+      } else {
+          AttrType update_value_type = updates[index].value.attr_type();
+          Value current_value = updates[index].value;
+          if (current_field_type != update_value_type) {
+              if (current_field_type == CHARS) {
+                  if (update_value_type == INTS) {
+                      std::string converted_value = common::int2string(current_value.get_int());
+                      current_value.set_string(converted_value.c_str());
+                      current_value.set_type(CHARS);
+                  } else if (update_value_type == FLOATS) {
+                      std::string converted_value = common::float2string(current_value.get_float());
+                      current_value.set_string(converted_value.c_str());
+                      current_value.set_type(CHARS);
+                  } else {
+                      if (update_value_type != NULLS || !current_field_meta->is_null()) {
+                          LOG_WARN("Type conflict detected. table=%s, field=%s, expected=%d, found=%d",
+                                  table_name, current_field_meta->name(), current_field_type, update_value_type);
+                          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+                      }
+                  }
+              } else if (current_field_type == INTS || current_field_type == FLOATS) {
+                  if (update_value_type == CHARS) {
+                      float numeric_value = common::string2float(current_value.get_string());
+                      current_value.set_type(current_field_type);
+                      current_value.set_float(numeric_value);
+                      if (current_field_type == INTS) {
+                          current_value.set_int(static_cast<int>(numeric_value));
+                      }
+                  } else if ((current_field_type == INTS && update_value_type == FLOATS) || (current_field_type == FLOATS && update_value_type == INTS)) {
+                      float numeric_value = (update_value_type == INTS) ? common::int2float(current_value.get_int()) : static_cast<float>(current_value.get_int());
+                      current_value.set_float(numeric_value);
+                      current_value.set_type(current_field_type);
+                  } else {
+                      if (update_value_type != NULLS || !current_field_meta->is_null()) {
+                          LOG_WARN("Incompatible data type. table=%s, field=%s, expected=%d, found=%d",
+                                  table_name, current_field_meta->name(), current_field_type, update_value_type);
+                          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+                      }
+                  }
+              } else if (current_field_type != DATES || (update_value_type == NULLS && !current_field_meta->is_null())) {
+                  LOG_WARN("Unsupported or mismatched field type. table=%s, field=%s, expected=%d, found=%d",
+                          table_name, current_field_meta->name(), current_field_type, update_value_type);
+                  return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+              }
           }
-        }else if(field_type==FLOATS){
-          if(value_type==INTS){
-            auto d= common::int2float(value.get_int());
-            value.set_type(FLOATS);
-            value.set_float(d);
-          }else if(value_type==CHARS){
-            auto d= common::string2float(value.get_string());
-            value.set_type(FLOATS);
-            value.set_float(d);
-          }else if(value_type==NULLS){
-            if(!field_meta->is_null()){
-              LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-              table_name, field_meta->name(), field_type, value_type);
-              return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-            }
-          }else{
-            LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-              table_name, field_meta->name(), field_type, value_type);
-            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          if (update_value_type == DATES && !common::is_valid_date(current_value.data())) {
+              LOG_WARN("Invalid date format. table=%s, field=%s, expected=%d, actual=%d",
+                      table_name, current_field_meta->name(), current_field_type, update_value_type);
+              return RC::INVALID_ARGUMENT;
           }
-        }else if(field_type==DATES){
-          if(value_type==NULLS){
-            if(!field_meta->is_null()){
-              LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-              table_name, field_meta->name(), field_type, value_type);
-              return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-            }
-          }else{
-            LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-              table_name, field_meta->name(), field_type, value_type);
-            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-          }
-        // }else if(field_type==TEXTS){
-        //   if(value_type==CHARS){
-        //     if(value.length()>65535){
-        //       return RC::INVALID_ARGUMENT;
-        //     }
-        //     char *text=(char *)malloc(value.length()+1);
-        //     memcpy(text,value.get_string().c_str(),value.length());
-        //     //text[value.length()]='\0';
-        //     //value.set_text(text);
-        //   }
-        }else{
-          LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-            table_name, field_meta->name(), field_type, value_type);
-          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-        }
-
-
-    }
-    if(value_type==DATES&&!common::is_valid_date(value.data())){
-        LOG_WARN("date error. table=%s, field=%s, field type=%d, value_type=%d",
-          table_name, field_meta->name(), field_type, value_type);
-        return RC::INVALID_ARGUMENT;
-    }
-    values_map[i]=value;
-
-    }
-    // if (field_meta->type() == DATES) {
-    //   int time_distance = *(int *)value.data;
-    //   if (!date_is_legal(time_distance)) {
-    //     LOG_WARN("Insert value illegal for type \'%s\'.", "DATE");
-    //     return RC::SCHEMA_FIELD_MISSING;
-    //   }  
-    // }
+          values_map[index] = current_value;
+      }
   }
+
   // create filter statement in `where` statement
   FilterStmt *filter_stmt = nullptr;
   std::unordered_map<std::string, Table *> table_map;
