@@ -39,7 +39,6 @@ public:
     stmt = new TrxEndStmt(type);
     return RC::SUCCESS;
   }
-
 private:
   StmtType type_;
 };
